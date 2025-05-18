@@ -1,2 +1,1 @@
-# cs611_assignment1
-Creation of datamart(bronze, silver, and gold) for users and loan data.
+Git link: https://github.com/lcsantosiv/cs611_assignment1#
