@@ -66,22 +66,23 @@ bronze_directory = "datamart/bronze/"
 if not os.path.exists(bronze_directory):
     os.makedirs(bronze_directory)
 
-# Store attribute data
+# # Store attribute data
 date_str = "2023-01-01"
-print("Copying transactional data to bronze datamart")
-utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = False)
+# print("Copying attribute data to bronze datamart")
+# utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = False)
 
-# run bronze backfill
-print("Copying attribute data to bronze datamart")
-for date_str in dates_str_lst:
-    utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = True)
+# # run bronze backfill
+# print("Copying transactional data to bronze datamart")
+# for date_str in dates_str_lst:
+#     utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = True)
 
 
 # create silver datalake
-silver_loan_daily_directory = "datamart/silver/"
+silver_directory = "datamart/silver/"
 
-if not os.path.exists(silver_loan_daily_directory):
-    os.makedirs(silver_loan_daily_directory)
+if not os.path.exists(silver_directory):
+    os.makedirs(silver_directory)
+utils.data_processing_silver_table.process_silver_table(date_str, bronze_directory, silver_directory, spark, transactional = False)
 
 # run silver backfill
 for date_str in dates_str_lst:
