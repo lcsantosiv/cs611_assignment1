@@ -23,39 +23,23 @@ def process_silver_table(snapshot_date_str, bronze_directory, silver_directory, 
         file_name = "features_attributes/features_attributes.csv"
         filepath = bronze_directory + file_name
         df = spark.read.csv(filepath, header=True, inferSchema=True)
-        
-        # SSN is assumed to have xxx-xx-xxxx format
-        ssn_pattern = r"^\d{3}-\d{2}-\d{4}$"
-        df_clean = df.withColumn(
-            "SSN",
-            F.when(F.col("SSN").rlike(ssn_pattern), F.col("SSN")).otherwise(None)
-        )
-        
-        # Create ssn_valid boolean
-        df_clean = df_clean.withColumn("ssn_valid",F.when(F.col("SSN").isNull(), 0).otherwise(1))
-        
+              
         # Blank Occupations are cleaned
         invalid_occ = ["_______", "", None]
-        df_clean = df_clean.withColumn("Occupation_clean", F.trim(F.col("Occupation"))) \
-            .withColumn(
-                "Occupation_clean",
-                F.when(
-                    F.col("Occupation_clean")
-                    .isin(invalid_occ), 
-                    None)
-                .otherwise(F.col("Occupation_clean"))
-            )
+        df_clean = df.withColumn("Occupation", F.trim(F.col("Occupation"))) \
+            .withColumn("Occupation", F.when(F.col("Occupation").isin(invalid_occ), None).otherwise(F.col("Occupation")))
         
         # Remove white spaces on Name column
         df_clean = df_clean.withColumn("Name", F.trim(F.col("Name")))
         
-        # Clean Age - assumed reasonable age is 15 to 100 years old
-        df_clean = df_clean.withColumn("Age_int", F.col("Age").cast(IntegerType()))
-        df_clean = df_clean.filter((F.col("Age_int") >= 15) & (F.col("Age_int") <= 100))
+
         
-        df_clean = df.withColumn("ssn_valid", F.when(F.col("SSN").rlike(r"^\d{3}-\d{2}-\d{4}$"), 1).otherwise(0)) \
-                     .withColumn("occupation_known", F.when(F.col("Occupation").isin("_______", "", None), 0).otherwise(1)) \
+        df_clean = df_clean.withColumn("ssn_valid", F.when(F.col("SSN").rlike(r"^\d{3}-\d{2}-\d{4}$"), 1).otherwise(0)) \
+                     .withColumn("occupation_known", F.when(F.col("Occupation").isNull(), 0).otherwise(1)) \
                      .withColumn("age_valid", F.when((F.col("Age").cast("int").isNotNull()) & (F.col("Age") >= 15), 1).otherwise(0))
+
+        # Clean Age - assumed reasonable age is 15 to 100 years old
+        df_clean = df_clean.withColumn("Age", F.col("Age").cast(IntegerType()))
         
         name_counts = df_clean.groupBy("Name").agg(F.count("*").alias("name_shared_count"))
         df_with_name_count = df_clean.join(name_counts, on="Name", how="left")
