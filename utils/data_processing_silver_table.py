@@ -18,13 +18,13 @@ from pyspark.sql.types import StringType, IntegerType, FloatType, DateType, Stru
 def process_silver_table(snapshot_date_str, bronze_directory, silver_directory, spark, transactional = True):
     if transactional:
         # Processing tables for feature_clickstream
-        bronze_directory = bronze_directory + 'feature_clickstream/'
-        silver_directory = silver_directory + 'feature_clickstream/'
+        bronze_directory_1 = bronze_directory + 'feature_clickstream/'
+        silver_directory_1 = silver_directory + 'feature_clickstream/'
         
         snapshot_date = datetime.strptime(snapshot_date_str, "%Y-%m-%d")
         partition_name = "feature_clickstream_" + snapshot_date_str.replace('-','_') + '.csv'
         
-        filepath = bronze_directory + partition_name        
+        filepath = bronze_directory_1 + partition_name        
         df_raw = spark.read.csv(filepath, header=True, inferSchema=True)
         print('loaded from:', filepath, 'row count:', df_raw.count())
         
@@ -45,10 +45,52 @@ def process_silver_table(snapshot_date_str, bronze_directory, silver_directory, 
                                    .limit(1).collect()[0][0]
         
         parquet_filename = f"feature_clickstream_{snapshot_date_str}.parquet"
-        parquet_path = os.path.join(silver_directory, parquet_filename)
+        parquet_path = os.path.join(silver_directory_1, parquet_filename)
         
         df_clean.write.mode("overwrite").parquet(parquet_path)       
         print(f"Saved {parquet_filename}")
+
+        # Processing tables for lms
+        bronze_directory_2 = bronze_directory + 'lms_loan_daily/'
+        silver_directory_2 = silver_directory + 'lms_loan_daily/'
+
+        partition_name = "lms_loan_daily_" + snapshot_date_str.replace('-','_') + '.csv'
+        filepath = bronze_directory_2 + partition_name
+        df = spark.read.csv(filepath, header=True, inferSchema=True)
+        print('loaded from:', filepath, 'row count:', df.count())
+    
+        # clean data: enforce schema / data type
+        # Dictionary specifying columns and their desired datatypes
+        column_type_map = {
+            "loan_id": StringType(),
+            "Customer_ID": StringType(),
+            "loan_start_date": DateType(),
+            "tenure": IntegerType(),
+            "installment_num": IntegerType(),
+            "loan_amt": FloatType(),
+            "due_amt": FloatType(),
+            "paid_amt": FloatType(),
+            "overdue_amt": FloatType(),
+            "balance": FloatType(),
+            "snapshot_date": DateType(),
+        }
+    
+        for column, new_type in column_type_map.items():
+            df = df.withColumn(column, F.col(column).cast(new_type))
+    
+        # augment data: add month on book
+        df = df.withColumn("mob", F.col("installment_num").cast(IntegerType()))
+    
+        # augment data: add days past due
+        df = df.withColumn("installments_missed", F.ceil(F.col("overdue_amt") / F.col("due_amt")).cast(IntegerType())).fillna(0)
+        df = df.withColumn("first_missed_date", F.when(F.col("installments_missed") > 0, F.add_months(F.col("snapshot_date"), -1 * F.col("installments_missed"))).cast(DateType()))
+        df = df.withColumn("dpd", F.when(F.col("overdue_amt") > 0.0, F.datediff(F.col("snapshot_date"), F.col("first_missed_date"))).otherwise(0).cast(IntegerType()))
+    
+        # save silver table - IRL connect to database to write
+        partition_name = "silver_loan_monthly_" + snapshot_date_str.replace('-','_') + '.parquet'
+        filepath = silver_directory_2 + partition_name
+        df.write.mode("overwrite").parquet(filepath)
+        print('saved to:', filepath)
         
     else:
         
