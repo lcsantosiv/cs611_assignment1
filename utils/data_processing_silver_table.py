@@ -13,7 +13,6 @@ import argparse
 
 from pyspark.sql.functions import col
 from pyspark.sql.types import StringType, IntegerType, FloatType, DateType, StructField, StructType
-from pyspark.sql.types import StringType, IntegerType, FloatType, DateType, StructField, StructType
 
 
 def process_silver_table(snapshot_date_str, bronze_directory, silver_directory, spark, transactional = True):

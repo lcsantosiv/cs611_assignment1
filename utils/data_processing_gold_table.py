@@ -72,19 +72,13 @@ def process_labels_gold_table(snapshot_date_str, silver_directory, gold_director
     # connect to silver table
     partition_name = "silver_loan_monthly_" + snapshot_date_str.replace('-','_') + '.parquet'
     filepath = silver_directory + partition_name
-    silver_directory = silver_directory + "lms_loan_daily/"
-    # connect to silver table
-    partition_name = "silver_loan_monthly_" + snapshot_date_str.replace('-','_') + '.parquet'
-    filepath = silver_directory + partition_name
     df = spark.read.parquet(filepath)
     print('loaded from:', filepath, 'row count:', df.count())
 
     # get customer at mob
     df = df.filter(F.col("mob") == mob)
-    df = df.filter(F.col("mob") == mob)
 
     # get label
-    df = df.withColumn("label", F.when(F.col("dpd") >= dpd, 1).otherwise(0).cast(IntegerType()))
     df = df.withColumn("label", F.when(F.col("dpd") >= dpd, 1).otherwise(0).cast(IntegerType()))
     df = df.withColumn("label_def", F.lit(str(dpd)+'dpd_'+str(mob)+'mob').cast(StringType()))
 
