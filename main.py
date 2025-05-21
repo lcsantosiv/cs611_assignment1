@@ -21,8 +21,6 @@ import utils.data_processing_gold_table
 # Initialize SparkSession
 spark = pyspark.sql.SparkSession.builder \
     .appName("dev") \
-    .config("spark.executor.memory", "8g") \
-    .config("spark.driver.memory", "4g") \
     .master("local[*]") \
     .getOrCreate()
 
@@ -70,17 +68,37 @@ if not os.path.exists(bronze_directory):
 
 # Store attribute data
 date_str = "2023-01-01"
-print("Copying attribute data to bronze datamart")
+print(
+    """
+    -------------
+    Copying attribute data to bronze datamart.
+    -------------
+    """
+)
 utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = False)
 
 # run bronze backfill
-print("Copying transactional data to bronze datamart")
+print(
+    """
+    -------------
+    Copying transactional data to bronze datamart.
+    -------------
+    """
+)
 for date_str in dates_str_lst:
     utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = True)
 
 
 # create silver datalake
 silver_directory = "datamart/silver/"
+
+print(
+    """
+    -------------
+    Copying data to silver datamart.
+    -------------
+    """
+)
 
 if not os.path.exists(silver_directory):
     os.makedirs(silver_directory)
@@ -98,15 +116,24 @@ if not os.path.exists(gold_directory):
     os.makedirs(gold_directory)
 
 # # run gold backfill
-print("Running gold label store")
+print(
+    """
+    -------------
+    Creating feature and label stores in gold datamart.
+    -------------
+    """
+)
 for date_str in dates_str_lst:
     utils.data_processing_gold_table.process_labels_gold_table(date_str, silver_directory, gold_directory, spark, dpd = 30, mob = 6)
+    utils.data_processing_gold_table.process_gold_table(date_str, silver_directory, gold_directory, spark, dpd = 30, mob = 6)
 
-print("Running gold feature store --- this might take a while please hold")
-date_str = "2023-01-01"
-utils.data_processing_gold_table.process_gold_table(date_str, silver_directory, gold_directory, spark, dpd = 30, mob = 6)
-
-print('All files loaded into bronze, silver, and gold datamarts')
+print(
+    """
+    -------------
+    All files loaded into bronze, silver, and gold datamarts!
+    -------------
+    """
+)
 
 
 

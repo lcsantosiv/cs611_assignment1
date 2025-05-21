@@ -29,7 +29,7 @@ def process_bronze_table(snapshot_date_str, bronze_directory, spark, monthly = T
             csv_file_path = f"data/{csv}.csv"
             # load data - IRL ingest from back end source system
             df = spark.read.csv(csv_file_path, header=True, inferSchema=True).filter(col('snapshot_date') == snapshot_date_str)
-            print(snapshot_date_str + 'row count:', df.count())
+            print(snapshot_date_str + 'row count: ', df.count())
     
             # save bronze table to datamart - IRL connect to database to write
             if not os.path.exists(bronze_directory + f"/{csv}"):
