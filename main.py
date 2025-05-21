@@ -21,6 +21,8 @@ import utils.data_processing_gold_table
 # Initialize SparkSession
 spark = pyspark.sql.SparkSession.builder \
     .appName("dev") \
+    .config("spark.executor.memory", "8g") \
+    .config("spark.driver.memory", "4g") \
     .master("local[*]") \
     .getOrCreate()
 
@@ -100,6 +102,9 @@ print(
     """
 )
 
+if not os.path.exists(silver_directory):
+    os.makedirs(silver_directory)
+utils.data_processing_silver_table.process_silver_table(date_str, bronze_directory, silver_directory, spark, transactional = False)
 if not os.path.exists(silver_directory):
     os.makedirs(silver_directory)
 utils.data_processing_silver_table.process_silver_table(date_str, bronze_directory, silver_directory, spark, transactional = False)
