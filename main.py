@@ -21,6 +21,8 @@ import utils.data_processing_gold_table
 # Initialize SparkSession
 spark = pyspark.sql.SparkSession.builder \
     .appName("dev") \
+    .config("spark.executor.memory", "8g") \
+    .config("spark.driver.memory", "4g") \
     .master("local[*]") \
     .getOrCreate()
 
@@ -61,32 +63,32 @@ dates_str_lst = generate_first_of_month_dates(start_date_str, end_date_str)
 # print(dates_str_lst)
 
 # create bronze datalake
-# bronze_directory = "datamart/bronze/"
+bronze_directory = "datamart/bronze/"
 
-# if not os.path.exists(bronze_directory):
-#     os.makedirs(bronze_directory)
+if not os.path.exists(bronze_directory):
+    os.makedirs(bronze_directory)
 
-# # Store attribute data
-# date_str = "2023-01-01"
-# print("Copying attribute data to bronze datamart")
-# utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = False)
+# Store attribute data
+date_str = "2023-01-01"
+print("Copying attribute data to bronze datamart")
+utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = False)
 
-# # run bronze backfill
-# print("Copying transactional data to bronze datamart")
-# for date_str in dates_str_lst:
-#     utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = True)
+# run bronze backfill
+print("Copying transactional data to bronze datamart")
+for date_str in dates_str_lst:
+    utils.data_processing_bronze_table.process_bronze_table(date_str, bronze_directory, spark, monthly = True)
 
 
 # create silver datalake
 silver_directory = "datamart/silver/"
 
-# if not os.path.exists(silver_directory):
-#     os.makedirs(silver_directory)
-# utils.data_processing_silver_table.process_silver_table(date_str, bronze_directory, silver_directory, spark, transactional = False)
+if not os.path.exists(silver_directory):
+    os.makedirs(silver_directory)
+utils.data_processing_silver_table.process_silver_table(date_str, bronze_directory, silver_directory, spark, transactional = False)
 
-# # run silver backfill
-# for date_str in dates_str_lst:
-#     utils.data_processing_silver_table.process_silver_table(date_str, bronze_directory, silver_directory, spark)
+# run silver backfill
+for date_str in dates_str_lst:
+    utils.data_processing_silver_table.process_silver_table(date_str, bronze_directory, silver_directory, spark)
 
 
 # create gold datalake
@@ -96,17 +98,15 @@ if not os.path.exists(gold_directory):
     os.makedirs(gold_directory)
 
 # # run gold backfill
-# for date_str in dates_str_lst:
+print("Running gold label store")
+for date_str in dates_str_lst:
+    utils.data_processing_gold_table.process_labels_gold_table(date_str, silver_directory, gold_directory, spark, dpd = 30, mob = 6)
+
+print("Running gold feature store --- this might take a while please hold")
 date_str = "2023-01-01"
-utils.data_processing_gold_table.process_labels_gold_table(date_str, silver_directory, gold_directory, spark, dpd = 30, mob = 6)
+utils.data_processing_gold_table.process_gold_table(date_str, silver_directory, gold_directory, spark, dpd = 30, mob = 6)
 
-
-# folder_path = gold_directory
-# files_list = [folder_path+os.path.basename(f) for f in glob.glob(os.path.join(folder_path, '*'))]
-# df = spark.read.option("header", "true").parquet(*files_list)
-# print("row_count:",df.count())
-print('run success')
-# df.show()
+print('All files loaded into bronze, silver, and gold datamarts')
 
 
 

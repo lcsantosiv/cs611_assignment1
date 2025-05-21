@@ -16,7 +16,7 @@ from pyspark.sql.types import StringType, IntegerType, FloatType, DateType
 from pyspark.sql.window import Window
 
 
-def process_labels_gold_table(snapshot_date_str, silver_directory, gold_directory, spark, dpd, mob):
+def process_gold_table(snapshot_date_str, silver_directory, gold_directory, spark, dpd, mob):
 
     # Finalizing loan data for gold
     df = spark.read.parquet("datamart/silver/lms_loan_daily/*.parquet")
@@ -120,21 +120,67 @@ def process_labels_gold_table(snapshot_date_str, silver_directory, gold_director
     # filepath = gold_label_store_directory + partition_name
     # df.write.mode("overwrite").parquet(filepath)
 
-    unique_dates = (
-        all_features
-        .select("snapshot_date")
-        .distinct()
-        .orderBy("snapshot_date")
-        .rdd
-        .map(lambda row: row["snapshot_date"])
-        .collect()
-    )
+    # unique_dates = (
+    #     all_features
+    #     .select("snapshot_date")
+    #     .distinct()
+    #     .orderBy("snapshot_date")
+    #     .rdd
+    #     .map(lambda row: row["snapshot_date"])
+    #     .collect()
+    # )
+    
+    start_date = datetime(2023, 1, 1)
+    end_date = datetime(2024, 12, 31)
+    
+    # Generate the list of first-of-month dates
+    unique_dates = []
+    current = start_date
+    
+    while current <= end_date:
+        unique_dates.append(current.strftime('%Y-%m-%d'))  # format as string (optional)
+        # Move to the first of the next month
+        if current.month == 12:
+            current = current.replace(year=current.year + 1, month=1)
+        else:
+            current = current.replace(month=current.month + 1)
+
     for date in unique_dates:
         df = all_features.filter(F.col("snapshot_date") == date)
         formatted_date = str(date).replace('-','_')
         path = f"datamart/gold/feature_store/feature_store_gold_{formatted_date}.parquet"
         df.write.mode("overwrite").parquet(path)
         print(f"Saved {path}")
+
+    return df
+
+def process_labels_gold_table(snapshot_date_str, silver_directory, gold_directory, spark, dpd, mob):
+    # prepare arguments
+    snapshot_date = datetime.strptime(snapshot_date_str, "%Y-%m-%d")
+    silver_directory = silver_directory + "lms_loan_daily/"
+    # connect to silver table
+    partition_name = "silver_loan_monthly_" + snapshot_date_str.replace('-','_') + '.parquet'
+    filepath = silver_directory + partition_name
+    df = spark.read.parquet(filepath)
+    print('loaded from:', filepath, 'row count:', df.count())
+
+    # get customer at mob
+    df = df.filter(F.col("mob") == mob)
+
+    # get label
+    df = df.withColumn("label", F.when(F.col("dpd") >= dpd, 1).otherwise(0).cast(IntegerType()))
+    df = df.withColumn("label_def", F.lit(str(dpd)+'dpd_'+str(mob)+'mob').cast(StringType()))
+
+    # select columns to save
+    df = df.select("loan_id", "Customer_ID", "label", "label_def", "snapshot_date")
+
+    # save gold table - IRL connect to database to write
+    partition_name = "gold_label_store_" + snapshot_date_str.replace('-','_') + '.parquet'
+    path = f"datamart/gold/label_store/{partition_name}"
+    df.write.mode("overwrite").parquet(path)
+    print(f"Saved {path}")
+    
+    return df
     
     # # save gold table - IRL connect to database to write
     # partition_name = "gold_feature_store_" + snapshot_date_str.replace('-','_') + '.parquet'
