@@ -213,5 +213,4 @@ def process_silver_table(snapshot_date_str, bronze_directory, silver_directory, 
         filepath = silver_directory + file_name
         df.write.mode("overwrite").parquet(filepath)
         print('saved to:', filepath)
-       
         return df_with_name_count

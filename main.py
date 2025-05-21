@@ -90,7 +90,6 @@ utils.data_processing_silver_table.process_silver_table(date_str, bronze_directo
 for date_str in dates_str_lst:
     utils.data_processing_silver_table.process_silver_table(date_str, bronze_directory, silver_directory, spark)
 
-
 # create gold datalake
 gold_directory = "datamart/gold/"
 
@@ -107,7 +106,4 @@ date_str = "2023-01-01"
 utils.data_processing_gold_table.process_gold_table(date_str, silver_directory, gold_directory, spark, dpd = 30, mob = 6)
 
 print('All files loaded into bronze, silver, and gold datamarts')
-
-
-
     
