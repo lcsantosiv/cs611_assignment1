@@ -17,14 +17,9 @@ from pyspark.sql.window import Window
 
 
 def process_gold_table(snapshot_date_str, silver_directory, gold_directory, spark, dpd, mob):
-    snapshot_date = datetime.strptime(snapshot_date_str, "%Y-%m-%d")
-    silver_directory_1 = silver_directory + "lms_loan_daily/"
-    
+
     # Finalizing loan data for gold
-    partition_name = "silver_loan_monthly_" + snapshot_date_str.replace('-','_') + '.parquet'
-    filepath = silver_directory + partition_name
-    df = spark.read.parquet(filepath)
-    print('loaded from:', filepath, 'row count:', df.count())
+    df = spark.read.parquet("datamart/silver/lms_loan_daily/*.parquet")
     
     loan_aggregates = df.groupBy("loan_id").agg(
         F.sum("paid_amt").alias("total_paid_amt"),
