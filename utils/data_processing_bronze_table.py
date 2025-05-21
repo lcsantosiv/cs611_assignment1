@@ -44,8 +44,10 @@ def process_bronze_table(snapshot_date_str, bronze_directory, spark, monthly = T
         for csv in csv_files:
             csv_file_path = f"data/{csv}.csv"
             df = spark.read.csv(csv_file_path, header=True, inferSchema=True)
+            
             if not os.path.exists(bronze_directory + f"/{csv}"):
                 os.makedirs(bronze_directory + f"/{csv}")
+                
             partition_name = f"{csv}/{csv}.csv"
             filepath = bronze_directory + partition_name
             df.toPandas().to_csv(filepath, index=False)
