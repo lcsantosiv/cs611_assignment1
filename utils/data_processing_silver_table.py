@@ -59,7 +59,6 @@ def process_silver_table(snapshot_date_str, bronze_directory, silver_directory, 
         df = spark.read.csv(filepath, header=True, inferSchema=True)
         print('loaded from:', filepath, 'row count:', df.count())
     
-        # clean data: enforce schema / data type
         # Dictionary specifying columns and their desired datatypes
         column_type_map = {
             "loan_id": StringType(),
@@ -168,9 +167,9 @@ def process_silver_table(snapshot_date_str, bronze_directory, silver_directory, 
             .filter(F.col("Type_of_Loan").isNotNull())
             .select(F.explode(F.split(F.col("Type_of_Loan"), ",\\s*")).alias("Loan"))
             .select(
-                F.trim(F.regexp_replace(F.col("Loan"), ",", "")).alias("Loan")  # remove commas inside the loan string
+                F.trim(F.regexp_replace(F.col("Loan"), ",", "")).alias("Loan")
             )
-            .filter(~F.col("Loan").rlike("(?i)^and\\b.*"))  # exclude entries starting with 'and'
+            .filter(~F.col("Loan").rlike("(?i)^and\\b.*"))
             .distinct()
             .orderBy("Loan")
             .rdd.flatMap(lambda x: x)
@@ -178,7 +177,7 @@ def process_silver_table(snapshot_date_str, bronze_directory, silver_directory, 
         )
         
         for loan in loan_types:
-            col_name = loan.replace(" ", "_").replace("-", "_").lower()  # safe column name
+            col_name = loan.replace(" ", "_").replace("-", "_").lower()
             df = df.withColumn(
                 col_name,
                 F.when(F.col("Type_of_Loan").contains(loan), F.lit(1)).otherwise(F.lit(0))
